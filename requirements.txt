@@ -1,0 +1,7 @@
+python-dotenv
+pyodbc
+realtime
+retry
+simplejson
+supabase
+websockets
