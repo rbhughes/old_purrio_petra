@@ -147,25 +147,25 @@ class Repo:
     suite: str
     well_count: int
     # wells_with_completion: int
-    # wells_with_core: int
-    # wells_with_dst: int
-    # wells_with_formation: int
-    # wells_with_ip: int
-    # wells_with_perforation: int
-    # wells_with_production: int
-    # wells_with_raster_log: int
-    # wells_with_survey: int
-    # wells_with_vector_log: int
-    # wells_with_zone: int
-    # storage_epsg: int
-    # storage_name: str
-    # display_epsg: int
-    # display_name: str
-    # files: int
-    # directories: int
-    # bytes: int
-    # repo_mod: str
-    # outline: List[List[float]] = field(default_factory=list)
+    wells_with_core: int
+    wells_with_dst: int
+    wells_with_formation: int
+    wells_with_ip: int
+    wells_with_perforation: int
+    wells_with_production: int
+    wells_with_raster_log: int
+    wells_with_survey: int
+    wells_with_vector_log: int
+    wells_with_zone: int
+    storage_epsg: int
+    storage_name: str
+    display_epsg: int
+    display_name: str
+    files: int
+    directories: int
+    bytes: int
+    repo_mod: str
+    outline: List[List[float]] = field(default_factory=list)
     # active: Optional[bool] = True
 
     def to_dict(self):
@@ -249,25 +249,25 @@ def validate_repo(payload: dict):
         suite=payload["suite"],
         well_count=payload["well_count"],
         # wells_with_completion=payload["wells_with_completion"],
-        # wells_with_core=payload["wells_with_core"],
-        # wells_with_dst=payload["wells_with_dst"],
-        # wells_with_formation=payload["wells_with_formation"],
-        # wells_with_ip=payload["wells_with_ip"],
-        # wells_with_perforation=payload["wells_with_perforation"],
-        # wells_with_production=payload["wells_with_production"],
-        # wells_with_raster_log=payload["wells_with_raster_log"],
-        # wells_with_survey=payload["wells_with_survey"],
-        # wells_with_vector_log=payload["wells_with_vector_log"],
-        # wells_with_zone=payload["wells_with_zone"],
-        # storage_epsg=payload["storage_epsg"],
-        # storage_name=payload["storage_name"],
-        # display_epsg=payload["display_epsg"],
-        # display_name=payload["display_name"],
-        # files=payload["files"],
-        # directories=payload["directories"],
-        # bytes=payload["bytes"],
-        # repo_mod=payload["repo_mod"],
-        # outline=payload["outline"],
+        wells_with_core=payload["wells_with_core"],
+        wells_with_dst=payload["wells_with_dst"],
+        wells_with_formation=payload["wells_with_formation"],
+        wells_with_ip=payload["wells_with_ip"],
+        wells_with_perforation=payload["wells_with_perforation"],
+        wells_with_production=payload["wells_with_production"],
+        wells_with_raster_log=payload["wells_with_raster_log"],
+        wells_with_survey=payload["wells_with_survey"],
+        wells_with_vector_log=payload["wells_with_vector_log"],
+        wells_with_zone=payload["wells_with_zone"],
+        storage_epsg=payload["storage_epsg"],
+        storage_name=payload["storage_name"],
+        display_epsg=payload["display_epsg"],
+        display_name=payload["display_name"],
+        files=payload["files"],
+        directories=payload["directories"],
+        bytes=payload["bytes"],
+        repo_mod=payload["repo_mod"],
+        outline=payload["outline"],
     )
 
 

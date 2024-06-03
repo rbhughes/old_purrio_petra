@@ -137,11 +137,14 @@ def repo_mod(repo_base) -> dict:
                 if os.path.isdir(full_path):
                     traverse(full_path)
                 else:
-                    gxdb_matcher = r"gxdb\.db$|gxdb_production\.db$|gxdb\.log$"
-                    if not re.match(gxdb_matcher, f):
-                        mod_time = datetime.fromtimestamp(stat.st_mtime)
-                        if mod_time > last_mod:
-                            last_mod = mod_time
+                    mod_time = datetime.fromtimestamp(stat.st_mtime)
+                    if mod_time > last_mod:
+                        last_mod = mod_time
+                    # gxdb_matcher = r"gxdb\.db$|gxdb_production\.db$|gxdb\.log$"
+                    # if not re.match(gxdb_matcher, f):
+                    #     mod_time = datetime.fromtimestamp(stat.st_mtime)
+                    #     if mod_time > last_mod:
+                    #         last_mod = mod_time
             except (OSError, ValueError):
                 continue
 

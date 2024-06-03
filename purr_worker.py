@@ -4,6 +4,9 @@ import sys
 import threading
 from dotenv import load_dotenv
 
+from asset.batcher import batcher
+from asset.loader import loader
+
 from common.sb_client import SupabaseClient
 from common.messenger import Messenger
 from common.queue_manager import QueueManager
@@ -103,12 +106,87 @@ class PurrWorker:
     ###########################################################################
 
     def handle_batcher(self, task):
-        pass
+
+        # 0. notify client of job/task start
+        logger.send_message(directive="busy", data={"job_id": task.id})
+
+        # 1. get associated repo
+        repo: Repo = self.fetch_repo(task.body)
+
+        # 2. get asset dna from edge function
+        res = self.sb_client.invoke_function(
+            task.body.suite,
+            invoke_options={"body": {"asset": task.body.asset}},
+        )
+        dna = json.loads(res.decode("utf-8"))
+
+        # 3. define a batch of tasks
+        tasks = batcher(task.body, dna, repo)
+        if not tasks:
+            print("nothing here, man")
+            return "nothing here"
+
+        # 4. enqueue batch of tasks (and get ids from return)
+        upres = self.sb_client.table("task").upsert(tasks).execute()
+
+        # 5. update batch ledger too
+        ledgers = [
+            {
+                "batch_id": batch_task.get("body").get("batch_id"),
+                "task_id": batch_task.get("id"),
+                "num_tasks": len(tasks),
+                "status": "PENDING",
+                "directive": "loader",
+            }
+            for batch_task in upres.data
+        ]
+        self.sb_client.table("batch_ledger").upsert(ledgers).execute()
+
+        # 6. remove this task
+        self.task_manager.manage_task(task.id)
+
+        logger.send_message(
+            directive="note",
+            repo_id=repo.id,
+            data={"note": f"set {len(tasks)} batcher tasks @ {repo.fs_path}"},
+            workflow="load",
+        )
+
+        # 7. notify client of job/task end
+        logger.send_message(directive="done", data={"job_id": task.id})
+
+        return True
 
     ###########################################################################
 
     def handle_loader(self, task):
-        pass
+        """
+        This task basically runs a select from the target project's gxdb and
+        writes to the local postgresql database.
+        :param task: An instance of LoaderTask
+        :return: TODO
+        """
+
+        # 0. notify client of job/task start
+        logger.send_message(directive="busy", data={"job_id": task.body.batch_id})
+
+        # 1. get associated repo
+        repo = self.fetch_repo(task.body)
+
+        # 2. run this loader task (select from source, write to pg)
+        loader(task.body, repo)
+
+        # 3. remove batch/task combo from batch_ledger
+        self.task_manager.manage_asset_batch(task.id, task.body.batch_id)
+
+        # 4. check if the whole batch is done
+        done = self.task_manager.is_batch_finished(task.body.batch_id)
+
+        if done:
+            # 5. notify client of job/task end
+            logger.send_message(directive="done", data={"job_id": task.body.batch_id})
+
+            return True
 
     ###########################################################################
 
@@ -157,8 +235,8 @@ class PurrWorker:
     def task_handler(self, task):
 
         task_handlers = {
-            # "batcher": self.handle_batcher,
-            # "loader": self.handle_loader,
+            "batcher": self.handle_batcher,
+            "loader": self.handle_loader,
             "recon": self.handle_recon,
             # "search": self.handle_search,
             # "export": handle_export,
@@ -191,7 +269,7 @@ class PurrWorker:
 
         def pluck(payload):
             task = validate_task(payload)
-            print(task)
+            # print(task)
 
             if task:
                 logger.debug(f"plucked {task.directive} task from queue")
