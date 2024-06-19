@@ -6,6 +6,8 @@ from common.dbisam import db_exec
 from common.util import hashify, hostname
 from typing import List
 
+# from common.debugger import debugger
+
 logger = Logger(__name__)
 
 
@@ -32,25 +34,35 @@ def make_where_clause(body):
     return where_clause
 
 
+# @debugger
 def fetch_id_list(repo, id_sql):
-    res = db_exec(repo.conn, id_sql)[0]
+    """
+    :param repo: The target project/repo
+    :param id_sql: SQL to collect just ids from the asset
+    :return: Results will be either be a single "keylist"
+    [{keylist: ["1-62", "1-82", "2-83", "2-84"]}]
+    or a list of key ids
+    [{key: "1-62"}, {key: "1-82"}, {key: "2-83"}, {key: "2-84"}]
+    Force int() or str(); the typical case is a list of int
+    """
+
+    def int_or_string(obj):
+        try:
+            return int(obj)
+        except ValueError:
+            return f"'{str(obj).strip()}'"
+
+    res = db_exec(repo.conn, id_sql)
 
     ids = []
-    try:
-        if "keylist" in res:
-            ids = res["keylist"].split(",")
-        elif "key" in res:
-            ids = [x["key"] for x in res]
-        else:
-            print("key or keylist missing; cannot make id list")
+    if "keylist" in res[0]:
+        ids = res[0]["keylist"].split(",")
+    elif "key" in res[0]:
+        ids = [x["key"] for x in res]
+    else:
+        print("key or keylist missing; cannot make id list")
 
-        if re.match(r"\D", ids[0]):
-            return [f"'{x.strip()}'" for x in ids]
-        else:
-            return [int(x.strip()) for x in ids]
-    except Exception as e:
-        print(e)
-        return ids  # most likely just null
+    return [int_or_string(i) for i in ids]
 
 
 def chunk_ids(ids, chunk):
@@ -104,7 +116,6 @@ def make_id_in_clauses(identifier_keys, ids):
         return f"{identifier_keys[0]} IN ({no_quotes})"
     else:
         idc = " || '-' || ".join(f"CAST({i} AS VARCHAR(10))" for i in identifier_keys)
-        # print(f"{idc} IN ({','.join(ids)})")
         return f"{idc} IN ({','.join(ids)})"
 
 
@@ -143,9 +154,8 @@ def batcher(body, dna, repo) -> List[dict]:
     ids = fetch_id_list(repo, id_sql)
     chunked_ids = chunk_ids(ids, body.chunk)
 
-    selectors = []
-
     # define chunks of selectors from id sub-lists
+    selectors = []
     for c in chunked_ids:
         in_clause = make_id_in_clauses(dna.get("identifier_keys"), c)
         chunk_where = where + " AND " + in_clause
@@ -162,6 +172,7 @@ def batcher(body, dna, repo) -> List[dict]:
             "batch_id": hashify(json.dumps(body.to_dict()).lower()),
             "conn": repo.conn.to_dict(),
             "suite": repo.suite,
+            "post_process": dna.get("post_process"),
             "prefixes": dna.get("prefixes"),
             "purr_delimiter": dna.get("purr_delimiter"),
             "purr_null": dna.get("purr_null"),

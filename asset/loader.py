@@ -3,8 +3,11 @@ import psycopg2.extras
 from common.logger import Logger
 from common.dbisam import db_exec
 from common.util import hashify, local_pg_params
+from asset.post_processor import doc_post_processor
 from asset.xformer import xformer
 from typing import List
+
+import json
 
 logger = Logger(__name__)
 
@@ -128,11 +131,18 @@ def compose_docs(data, body) -> List[dict]:
                 if key.startswith(prefix):
                     new_key = key.replace(f"{prefix}", "", 1)
                     doc[table][new_key] = val
-        o["doc"] = doc
 
+        o["doc"] = doc
         docs.append(o)
 
     # print(json.dumps(docs[0], indent=4))
+
+    if body.post_process:
+        for doc_proc in body.post_process:
+            # TODO: verify that docs get modified in place. 35137004570000
+            # doc_post_processor(docs, doc_proc)
+            docs = doc_post_processor(docs, doc_proc)
+
     return docs
 
 

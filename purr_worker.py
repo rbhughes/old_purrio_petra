@@ -13,13 +13,27 @@ from common.queue_manager import QueueManager
 from common.task_manager import TaskManager
 from common.typeish import validate_task, validate_repo, Repo
 from common.util import init_socket, hostname, SUITE
-from common.logger import Logger
 from recon.recon import repo_recon
+from search.search import search_local_pg, query_to_file
+from common.logger import Logger
 
 from typing import Any, Callable, Dict, List
 
 load_dotenv()
 logger = Logger(__name__)
+
+
+def handle_export(task):
+    """
+
+    :param task: ExportTaskBody
+    :return: None
+    """
+    logger.send_message(directive="busy", data={"job_id": task.id})
+    query_to_file(task.body)
+    logger.send_message(directive="done", data={"job_id": task.id})
+
+    return True
 
 
 class PurrWorker:
@@ -226,6 +240,22 @@ class PurrWorker:
     ###########################################################################
 
     def handle_search(self, task):
+        """
+        This task parses search terms to run FTS queries on local postgres asset
+        tables. Search results are written to the supabase search_result table
+        and linked to the user's search via the search_id and user_id.
+        It's a submit -> queue -> publish -> subscribe flow.
+        :param task: An instance of SearchTask
+        :return: TODO
+        """
+        # 0. notify client of job/task start
+        logger.send_message(directive="busy", data={"job_id": task.id})
+
+        # 1. fts on local pg
+        search_local_pg(self.sb_client, task.body)
+
+        # 2. notify client of job/task end
+        logger.send_message(directive="done", data={"job_id": task.id})
         pass
 
     ###########################################################################
@@ -238,8 +268,8 @@ class PurrWorker:
             "batcher": self.handle_batcher,
             "loader": self.handle_loader,
             "recon": self.handle_recon,
-            # "search": self.handle_search,
-            # "export": handle_export,
+            "search": self.handle_search,
+            "export": handle_export,
             # "stats": self.handle_stats,
             # "halt": self.halt,
         }

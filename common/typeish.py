@@ -70,6 +70,7 @@ class LoaderTaskBody:
     asset_id_keys: List[str]
     batch_id: str
     conn: DBISAMConn
+    post_process: Optional[List[str]]
     prefixes: Dict[str, str]
     purr_delimiter: Optional[str]
     purr_null: Optional[str]
